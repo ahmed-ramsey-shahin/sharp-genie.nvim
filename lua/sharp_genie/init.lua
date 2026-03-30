@@ -46,11 +46,24 @@ local function tab_key_pressed(buf)
     ui.draw_marks(M.config, buf, ns_id, properties)
 end
 
+local function toggle_property(buf, p)
+    local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+    for _, property in ipairs(properties) do
+        if property.line_number == line then
+            property[p] = not property[p]
+        end
+    end
+    ui.draw_marks(M.config, buf, ns_id, properties)
+end
+
 M.config = vim.tbl_deep_extend("force", {}, default_config)
 
 M.open_sharp_genie = function()
 	local _, buf = ui.create_buffer(M.config)
-    vim.keymap.set("n", "<Tab>", function() tab_key_pressed(buf) end)
+    vim.keymap.set("n", "<Tab>", function() tab_key_pressed(buf) end, { buffer = buf })
+    vim.keymap.set("n", "1", function() toggle_property(buf, "get") end, { buffer = buf })
+    vim.keymap.set("n", "2", function() toggle_property(buf, "set") end, { buffer = buf })
+    vim.keymap.set("n", "3", function() toggle_property(buf, "init") end, { buffer = buf })
     vim.api.nvim_create_autocmd(
         { "InsertLeave", "TextChanged" },
         {

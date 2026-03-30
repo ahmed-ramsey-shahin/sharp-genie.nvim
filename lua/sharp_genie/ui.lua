@@ -27,12 +27,23 @@ end
 M.draw_marks = function(config, buf, ns_id, properties)
     vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
     for _, property in ipairs(properties) do
+        local access_modifier_highlight = ""
+        if property.access_modifier == "public" then
+            access_modifier_highlight = "DiagnosticOk"
+        elseif property.access_modifier == "private" then
+            access_modifier_highlight = "DiagnosticError"
+        elseif property.access_modifier == "protected" then
+            access_modifier_highlight = "DiagnosticWarn"
+        end
         local mark_opts = {
             virt_text = {
-                { string.format("Access Modifier: %s | ", property.access_modifier), "Comment" },
-                { string.format("Get: %s | ", property.get and config.true_icon or config.false_icon), "Comment" },
-                { string.format("Set: %s | ", property.set and config.true_icon or config.false_icon), "Comment" },
-                { string.format("Init: %s", property.init and config.true_icon or config.false_icon), "Comment" },
+                { string.format("Access Modifier: %s", property.access_modifier), access_modifier_highlight },
+                { " | ", "Comment" },
+                { string.format("Get: %s", property.get and config.true_icon or config.false_icon), property.get and "DiagnosticOk" or "DiagnosticError" },
+                { " | ", "Comment" },
+                { string.format("Set: %s", property.set and config.true_icon or config.false_icon), property.set and "DiagnosticOk" or "DiagnosticError" },
+                { " | ", "Comment" },
+                { string.format("Init: %s", property.init and config.true_icon or config.false_icon), property.init and "DiagnosticOk" or "DiagnosticError" },
             },
             virt_text_pos = "eol",
             hl_mode = "combine",
