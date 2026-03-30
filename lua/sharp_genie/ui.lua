@@ -24,4 +24,21 @@ M.create_buffer = function(config)
     return win, buf
 end
 
+M.draw_marks = function(config, buf, ns_id, properties)
+    vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
+    for _, property in ipairs(properties) do
+        local mark_opts = {
+            virt_text = {
+                { string.format("Access Modifier: %s | ", property.access_modifier), "Comment" },
+                { string.format("Get: %s | ", property.get and config.true_icon or config.false_icon), "Comment" },
+                { string.format("Set: %s | ", property.set and config.true_icon or config.false_icon), "Comment" },
+                { string.format("Init: %s", property.init and config.true_icon or config.false_icon), "Comment" },
+            },
+            virt_text_pos = "eol",
+            hl_mode = "combine",
+        }
+        vim.api.nvim_buf_set_extmark(buf, ns_id, property.line_number, 0, mark_opts)
+    end
+end
+
 return M
