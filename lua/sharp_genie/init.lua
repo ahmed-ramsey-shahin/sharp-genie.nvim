@@ -9,9 +9,10 @@ local default_config = {
     true_icon = "✓",
     false_icon = "✗",
 }
+local properties = {}
 
 local function handle_inputs(buf)
-    local properties = {}
+    properties = {}
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
     for i, line in ipairs(lines) do
         local data_type, name = line:match("^%s*(.*)%s+(.*)%s*$")
@@ -27,20 +28,36 @@ local function handle_inputs(buf)
             })
         end
     end
-    return properties
+end
+
+local function tab_key_pressed(buf)
+    local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+    for _, property in ipairs(properties) do
+        if property.line_number == line then
+            if property.access_modifier == "public" then
+                property.access_modifier = "private"
+            elseif property.access_modifier == "private" then
+                property.access_modifier = "protected"
+            elseif property.access_modifier == "protected" then
+                property.access_modifier = "public"
+            end
+        end
+    end
+    ui.draw_marks(M.config, buf, ns_id, properties)
 end
 
 M.config = vim.tbl_deep_extend("force", {}, default_config)
 
 M.open_sharp_genie = function()
 	local _, buf = ui.create_buffer(M.config)
+    vim.keymap.set("n", "<Tab>", function() tab_key_pressed(buf) end)
     vim.api.nvim_create_autocmd(
         { "InsertLeave", "TextChanged" },
         {
             group = augroup,
             buffer = buf,
             callback = function()
-                local properties = handle_inputs(buf)
+                handle_inputs(buf)
                 ui.draw_marks(M.config, buf, ns_id, properties)
             end,
         }
