@@ -8,6 +8,7 @@ local default_config = {
 	border = "rounded",
     true_icon = "✓",
     false_icon = "✗",
+    separator = "|"
 }
 local properties = {}
 
@@ -21,36 +22,26 @@ local function handle_inputs(buf)
                 data_type = data_type,
                 name = name,
                 access_modifier = "public",
-                get = true,
-                set = true,
-                init = false,
+                extra_part = "",
+                extra_access_modifier = "",
                 line_number = i-1,
             })
         end
     end
 end
 
-local function tab_key_pressed(buf)
+local function toggle_property(buf, p, values)
     local line = vim.api.nvim_win_get_cursor(0)[1] - 1
     for _, property in ipairs(properties) do
         if property.line_number == line then
-            if property.access_modifier == "public" then
-                property.access_modifier = "private"
-            elseif property.access_modifier == "private" then
-                property.access_modifier = "protected"
-            elseif property.access_modifier == "protected" then
-                property.access_modifier = "public"
+            for i, value in ipairs(values) do
+                if value == property[p] then
+                    local next_index = (i % #values) + 1
+                    property[p] = values[next_index]
+                    break
+                end
             end
-        end
-    end
-    ui.draw_marks(M.config, buf, ns_id, properties)
-end
-
-local function toggle_property(buf, p)
-    local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-    for _, property in ipairs(properties) do
-        if property.line_number == line then
-            property[p] = not property[p]
+            break
         end
     end
     ui.draw_marks(M.config, buf, ns_id, properties)
@@ -59,12 +50,21 @@ end
 local function properties_to_text()
     local content = {}
     for _, property in ipairs(properties) do
-        local get_part = property.get and "get; " or ""
-        local set_part = ""
-        if property.set then
-            set_part = "set; "
-        elseif property.init then
-            set_part = "init; "
+        local extra_part = ""
+        local extra_access_modifer = ""
+        if property.extra_part == "set" then
+            extra_part = "set; "
+        elseif property.extra_part == "init" then
+            extra_part = "init; "
+        end
+        if property.extra_access_modifier == "public" then
+            extra_access_modifer = "public "
+        elseif property.extra_access_modifier == "private" then
+            extra_access_modifer = "private "
+        elseif property.extra_access_modifier == "protected" then
+            extra_access_modifer = "protected "
+        elseif property.extra_access_modifier == "internal" then
+            extra_access_modifer = "internal "
         end
         table.insert(
             content,
@@ -76,12 +76,12 @@ local function properties_to_text()
             .. " "
             .. "{"
             .. " "
-            .. get_part
-            .. set_part
+            .. "get; "
+            .. extra_access_modifer
+            .. extra_part
             .. "}"
         )
     end
-    vim.print(content)
     return content
 end
 
@@ -111,10 +111,9 @@ M.config = vim.tbl_deep_extend("force", {}, default_config)
 
 M.open_sharp_genie = function()
 	local win, buf = ui.create_buffer(M.config)
-    vim.keymap.set("n", "<Tab>", function() tab_key_pressed(buf) end, { buffer = buf })
-    vim.keymap.set("n", "1", function() toggle_property(buf, "get") end, { buffer = buf })
-    vim.keymap.set("n", "2", function() toggle_property(buf, "set") end, { buffer = buf })
-    vim.keymap.set("n", "3", function() toggle_property(buf, "init") end, { buffer = buf })
+    vim.keymap.set("n", "<Tab>", function() toggle_property(buf, "access_modifier", { "public", "private", "protected", "internal", }) end, { buffer = buf })
+    vim.keymap.set("n", "1", function() toggle_property(buf, "extra_part", { "set", "init", "", }) end, { buffer = buf })
+    vim.keymap.set("n", "2", function() toggle_property(buf, "extra_access_modifier", { "", "public", "private", "protected", "internal" }) end, { buffer = buf })
     vim.keymap.set("n", "q", function() print_properties(win) end, { buffer = buf })
     vim.keymap.set("n", "<A-q>", function() vim.api.nvim_win_close(win, false) end, { buffer = buf })
     vim.api.nvim_create_autocmd(
