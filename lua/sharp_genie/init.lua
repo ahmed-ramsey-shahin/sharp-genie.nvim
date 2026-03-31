@@ -56,14 +56,67 @@ local function toggle_property(buf, p)
     ui.draw_marks(M.config, buf, ns_id, properties)
 end
 
+local function properties_to_text()
+    local content = {}
+    for _, property in ipairs(properties) do
+        local get_part = property.get and "get; " or ""
+        local set_part = ""
+        if property.set then
+            set_part = "set; "
+        elseif property.init then
+            set_part = "init; "
+        end
+        table.insert(
+            content,
+            property.access_modifier
+            .. " "
+            .. property.data_type
+            .. " "
+            .. property.name
+            .. " "
+            .. "{"
+            .. " "
+            .. get_part
+            .. set_part
+            .. "}"
+        )
+    end
+    vim.print(content)
+    return content
+end
+
+local function print_properties(win)
+    local prev_buf = vim.fn.bufnr("#")
+    if prev_buf == -1 or not vim.api.nvim_buf_is_loaded(prev_buf) then
+        vim.notify("No previous buffer found!", vim.log.levels.WARN)
+        return
+    end
+    local last_pos = vim.api.nvim_buf_get_mark(prev_buf, '^')
+    local last_row = last_pos[1]
+    if last_row == 0 then
+        vim.notify("The buffer was never opened", vim.log.levels.WARN)
+        return
+    end
+    last_row = last_row - 1
+    local content = properties_to_text()
+    local count = #content
+    vim.api.nvim_buf_set_lines(prev_buf, last_row, last_row, false, content)
+    vim.api.nvim_buf_call(prev_buf, function ()
+        vim.cmd(string.format("normal! %dG%d==", last_row + 1, count))
+    end)
+    vim.api.nvim_win_close(win, false)
+end
+
 M.config = vim.tbl_deep_extend("force", {}, default_config)
 
 M.open_sharp_genie = function()
-	local _, buf = ui.create_buffer(M.config)
+	local win, buf = ui.create_buffer(M.config)
     vim.keymap.set("n", "<Tab>", function() tab_key_pressed(buf) end, { buffer = buf })
     vim.keymap.set("n", "1", function() toggle_property(buf, "get") end, { buffer = buf })
     vim.keymap.set("n", "2", function() toggle_property(buf, "set") end, { buffer = buf })
     vim.keymap.set("n", "3", function() toggle_property(buf, "init") end, { buffer = buf })
+    vim.keymap.set("n", "q", function() print_properties(win) end, { buffer = buf })
+    vim.keymap.set("n", "<A-q>", function() vim.api.nvim_win_close(win, false) end, { buffer = buf })
     vim.api.nvim_create_autocmd(
         { "InsertLeave", "TextChanged" },
         {
